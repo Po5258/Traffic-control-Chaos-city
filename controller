@@ -1,0 +1,16 @@
+namespace TrafficControlChaosCity.Controller;
+
+public sealed class GameController
+{
+    private readonly RoadMap _roadMap;
+
+    public GameController(RoadMap roadMap)
+    {
+        _roadMap = roadMap ?? throw new ArgumentNullException(nameof(roadMap));
+    }
+
+    public void CreateInitialScene()
+    {
+        _roadMap.LoadDefaultLayout();
+    }
+}
