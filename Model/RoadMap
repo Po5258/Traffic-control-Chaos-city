@@ -1,0 +1,19 @@
+namespace TrafficControlChaosCity.Model;
+
+public sealed class RoadMap : ObservableModel
+{
+    private readonly List<RoadSegment> _roads = new();
+
+    public IReadOnlyList<RoadSegment> Roads => _roads.AsReadOnly();
+
+    public void LoadDefaultLayout()
+    {
+        _roads.Clear();
+
+        _roads.Add(new RoadSegment(0.0, 0.40, 1.0, 0.20));
+
+        _roads.Add(new RoadSegment(0.42, 0.0, 0.16, 1.0));
+
+        NotifyChanged();
+    }
+}
