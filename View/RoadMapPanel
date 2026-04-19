@@ -1,0 +1,70 @@
+using System.Drawing.Drawing2D;
+using TrafficControlChaosCity.Model;
+
+namespace TrafficControlChaosCity.View;
+
+public sealed class RoadMapPanel : Panel
+{
+    private readonly RoadMap _roadMap;
+    private IReadOnlyList<RoadSegment> _cachedRoads = Array.Empty<RoadSegment>();
+
+    public RoadMapPanel(RoadMap roadMap)
+    {
+        _roadMap = roadMap ?? throw new ArgumentNullException(nameof(roadMap));
+
+        DoubleBuffered = true;
+        Dock = DockStyle.Fill;
+        BackColor = Color.FromArgb(25, 25, 25);
+
+        _roadMap.Changed += OnRoadMapChanged;
+        RefreshCache();
+    }
+
+    private void OnRoadMapChanged(object? sender, EventArgs e)
+    {
+        RefreshCache();
+        Invalidate();
+    }
+
+    private void RefreshCache()
+    {
+        _cachedRoads = _roadMap.Roads.ToArray();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+        using var roadBrush = new SolidBrush(Color.FromArgb(70, 70, 70));
+        using var roadBorderPen = new Pen(Color.FromArgb(110, 110, 110), 2);
+
+        foreach (var road in _cachedRoads)
+        {
+            Rectangle rect = ToPixelRectangle(road);
+            e.Graphics.FillRectangle(roadBrush, rect);
+            e.Graphics.DrawRectangle(roadBorderPen, rect);
+        }
+    }
+
+    private Rectangle ToPixelRectangle(RoadSegment road)
+    {
+        int x = (int)Math.Round(road.X * ClientSize.Width);
+        int y = (int)Math.Round(road.Y * ClientSize.Height);
+        int width = Math.Max(1, (int)Math.Round(road.Width * ClientSize.Width));
+        int height = Math.Max(1, (int)Math.Round(road.Height * ClientSize.Height));
+
+        return new Rectangle(x, y, width, height);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _roadMap.Changed -= OnRoadMapChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+}
