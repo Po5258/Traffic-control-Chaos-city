@@ -1,0 +1,57 @@
+using TrafficControlChaosCity.Controller;
+using TrafficControlChaosCity.Model;
+
+namespace TrafficControlChaosCity.View;
+
+public sealed class MainForm : Form
+{
+    private readonly RoadMap _roadMap;
+    private readonly GameController _controller;
+
+    public MainForm()
+    {
+        Text = "Traffic Control: Chaos City";
+        StartPosition = FormStartPosition.CenterScreen;
+        ClientSize = new Size(1000, 700);
+        MinimumSize = new Size(800, 600);
+
+        _roadMap = new RoadMap();
+        _controller = new GameController(_roadMap);
+
+        var topPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 52,
+            BackColor = Color.FromArgb(35, 35, 35)
+        };
+
+        var resetButton = new Button
+        {
+            Text = "Load Roads",
+            Width = 120,
+            Height = 30,
+            Left = 12,
+            Top = 11
+        };
+        resetButton.Click += (_, _) => _controller.CreateInitialScene();
+
+        var infoLabel = new Label
+        {
+            Text = "Stage 1: roads only. MVC + Observer ready.",
+            AutoSize = true,
+            ForeColor = Color.White,
+            Left = 150,
+            Top = 16
+        };
+
+        topPanel.Controls.Add(resetButton);
+        topPanel.Controls.Add(infoLabel);
+
+        var roadMapPanel = new RoadMapPanel(_roadMap);
+
+        Controls.Add(roadMapPanel);
+        Controls.Add(topPanel);
+
+        Load += (_, _) => _controller.CreateInitialScene();
+    }
+}
