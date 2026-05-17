@@ -1,0 +1,46 @@
+using System;
+
+namespace TrafficControlGame.Models
+{
+    public class Car
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Speed { get; set; }
+        public Direction MoveDirection { get; set; }
+        public CarType Type { get; set; }
+        public float Aggression { get; set; }
+        public bool IsStopped { get; set; }
+
+        public Car(float x, float y, Direction dir, CarType type)
+        {
+            X = x;
+            Y = y;
+            MoveDirection = dir;
+            Type = type;
+            Speed = (type == CarType.Ambulance || type == CarType.Police) ? 5f : 3f;
+            Aggression = 0;
+        }
+
+        public void Move()
+        {
+            if (IsStopped)
+            {
+                Aggression += 0.5f;
+                return;
+            }
+            else
+            {
+                Aggression = Math.Max(0, Aggression - 0.1f);
+            }
+
+            switch (MoveDirection)
+            {
+                case Direction.Right: X += Speed; break;
+                case Direction.Left: X -= Speed; break;
+                case Direction.Down: Y += Speed; break;
+                case Direction.Up: Y -= Speed; break;
+            }
+        }
+    }
+}
