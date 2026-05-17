@@ -1,0 +1,16 @@
+using System;
+
+namespace TrafficControlGame.Models
+{
+    public enum Direction { Up, Down, Left, Right }
+
+    public enum CarType
+    {
+        Normal_Yellow,
+        Normal_White,
+        Normal_Red,
+        Normal_Black,
+        Ambulance,
+        Police
+    }
+}
