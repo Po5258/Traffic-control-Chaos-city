@@ -1,57 +1,200 @@
-using TrafficControlChaosCity.Controller;
-using TrafficControlChaosCity.Model;
+using System;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
+using TrafficControlGame.Models;
+using TrafficControlGame.Controllers;
 
-namespace TrafficControlChaosCity.View;
-
-public sealed class MainForm : Form
+namespace TrafficControlGame.Views
 {
-    private readonly RoadMap _roadMap;
-    private readonly GameController _controller;
-
-    public MainForm()
+    public class MainForm : Form
     {
-        Text = "Traffic Control: Chaos City";
-        StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1000, 700);
-        MinimumSize = new Size(800, 600);
+        private GameModel _model;
+        private GameController _controller;
+        private Timer _timer;
 
-        _roadMap = new RoadMap();
-        _controller = new GameController(_roadMap);
+        private Image _bgImage;
+        private Image _yellowCarImg, _whiteCarImg, _redCarImg, _blackCarImg;
+        private Image _ambulanceImg, _policeImg;
 
-        var topPanel = new Panel
+        public MainForm()
         {
-            Dock = DockStyle.Top,
-            Height = 52,
-            BackColor = Color.FromArgb(35, 35, 35)
-        };
+            this.DoubleBuffered = true;
+            this.Size = new Size(620, 640);
+            this.Text = "Traffic Control: Chaos City";
+            this.BackColor = Color.FromArgb(40, 40, 40);
 
-        var resetButton = new Button
+            if (File.Exists("fon.png")) _bgImage = Image.FromFile("fon.png");
+
+            if (File.Exists("yellow car.png")) _yellowCarImg = Image.FromFile("yellow car.png");
+            if (File.Exists("white car.png")) _whiteCarImg = Image.FromFile("white car.png");
+            if (File.Exists("red car .png")) _redCarImg = Image.FromFile("red car .png");
+            if (File.Exists("black car.png")) _blackCarImg = Image.FromFile("black car.png");
+            if (File.Exists("ambulance car .png")) _ambulanceImg = Image.FromFile("ambulance car .png");
+            if (File.Exists("police car.png")) _policeImg = Image.FromFile("police car.png");
+
+            _model = new GameModel();
+            _controller = new GameController(_model);
+
+            _timer = new Timer();
+            _timer.Interval = 30;
+            _timer.Tick += (s, e) =>
+            {
+                _model.Update();
+                this.Invalidate();
+            };
+            _timer.Start();
+
+            this.MouseClick += MainForm_MouseClick;
+        }
+
+        private void MainForm_MouseClick(object sender, MouseEventArgs e)
         {
-            Text = "Load Roads",
-            Width = 120,
-            Height = 30,
-            Left = 12,
-            Top = 11
-        };
-        resetButton.Click += (_, _) => _controller.CreateInitialScene();
+            _controller.ProcessClick(e.X, e.Y);
+        }
 
-        var infoLabel = new Label
+        protected override void OnPaint(PaintEventArgs e)
         {
-            Text = "Stage 1: roads only. MVC + Observer ready.",
-            AutoSize = true,
-            ForeColor = Color.White,
-            Left = 150,
-            Top = 16
-        };
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
 
-        topPanel.Controls.Add(resetButton);
-        topPanel.Controls.Add(infoLabel);
+            if (_bgImage != null)
+            {
+                g.DrawImage(_bgImage, 0, 0, this.ClientSize.Width, this.ClientSize.Height);
+            }
 
-        var roadMapPanel = new RoadMapPanel(_roadMap);
+            g.FillRectangle(Brushes.Gray, 0, 240, 600, 120);
+            g.FillRectangle(Brushes.Gray, 240, 0, 120, 600);
 
-        Controls.Add(roadMapPanel);
-        Controls.Add(topPanel);
+            if (_model.CurrentLevel == 3)
+            {
+                g.FillRectangle(Brushes.Gray, 460, 0, 120, 600);
+            }
 
-        Load += (_, _) => _controller.CreateInitialScene();
+            using (Pen dashPen = new Pen(Color.Yellow, 2) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
+            {
+                g.DrawLine(dashPen, 300, 0, 300, 240);
+                g.DrawLine(dashPen, 300, 360, 300, 600);
+                g.DrawLine(dashPen, 0, 300, 240, 300);
+
+                if (_model.CurrentLevel < 3)
+                {
+                    g.DrawLine(dashPen, 360, 300, 600, 300);
+                }
+                else
+                {
+                    g.DrawLine(dashPen, 360, 300, 460, 300);
+                    g.DrawLine(dashPen, 580, 300, 620, 300);
+                    g.DrawLine(dashPen, 520, 0, 520, 240);
+                    g.DrawLine(dashPen, 520, 360, 520, 600);
+                }
+            }
+
+            foreach (var light in _model.Lights)
+            {
+                Brush color = light.IsGreen ? Brushes.LimeGreen : Brushes.Red;
+                g.FillRectangle(Brushes.Black, light.X - 12, light.Y - 12, 24, 24);
+                g.FillEllipse(color, light.X - 10, light.Y - 10, 20, 20);
+                g.DrawEllipse(Pens.White, light.X - 10, light.Y - 10, 20, 20);
+            }
+
+            foreach (var car in _model.Cars)
+            {
+                Image currentImg = null;
+                switch (car.Type)
+                {
+                    case CarType.Normal_Yellow: currentImg = _yellowCarImg; break;
+                    case CarType.Normal_White: currentImg = _whiteCarImg; break;
+                    case CarType.Normal_Red: currentImg = _redCarImg; break;
+                    case CarType.Normal_Black: currentImg = _blackCarImg; break;
+                    case CarType.Ambulance: currentImg = _ambulanceImg; break;
+                    case CarType.Police: currentImg = _policeImg; break;
+                }
+
+                var state = g.Save();
+                g.TranslateTransform(car.X, car.Y);
+
+                float angle = 0;
+                switch (car.MoveDirection)
+                {
+                    case Direction.Up:
+                        angle = 0;   
+                        break;
+                    case Direction.Down:
+                        angle = 180; 
+                        break;
+                    case Direction.Left:
+                        angle = 270;  
+                        break;
+                    case Direction.Right:
+                        angle = 90; 
+                        break;
+                }
+                g.RotateTransform(angle);
+
+                if (currentImg != null)
+                {
+                    float maxCarLength = 75f;
+                    float scale = maxCarLength / Math.Max(currentImg.Width, currentImg.Height);
+                    float drawWidth = currentImg.Width * scale;
+                    float drawHeight = currentImg.Height * scale;
+
+                    g.DrawImage(currentImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+                }
+                else
+                {
+                    float fallbackWidth = 30f;
+                    float fallbackHeight = 50f;
+                    Brush fallbackColor = Brushes.Orange;
+                    if (car.Type == CarType.Ambulance || car.Type == CarType.Police) fallbackColor = Brushes.White;
+                    else if (car.Type == CarType.Normal_Red) fallbackColor = Brushes.Red;
+                    else if (car.Type == CarType.Normal_Black) fallbackColor = Brushes.Black;
+
+                    g.FillRectangle(fallbackColor, -fallbackWidth / 2, -fallbackHeight / 2, fallbackWidth, fallbackHeight);
+                }
+                g.Restore(state);
+
+                if (car.Aggression > 0)
+                {
+                    float barWidth = 30f;
+                    float currentBar = (car.Aggression / 100f) * barWidth;
+                    g.FillRectangle(Brushes.Red, car.X - 15, car.Y - 30, Math.Min(barWidth, currentBar), 5);
+                    g.DrawRectangle(Pens.Black, car.X - 15, car.Y - 30, barWidth, 5);
+                }
+            }
+
+            float targetTime = (_model.CurrentLevel == 1) ? 15f : (_model.CurrentLevel == 2) ? 30f : 45f;
+
+            g.DrawString($"Level: {_model.CurrentLevel}", new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 10);
+            g.DrawString($"Time: {_model.SurvivalTime:F1} / {targetTime:F1} s", new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 35);
+
+            if (_model.IsLevelCompleted)
+            {
+                g.FillRectangle(new SolidBrush(Color.FromArgb(200, 0, 0, 0)), 0, 200, 600, 180);
+                g.DrawString("LEVEL COMPLETED!", new Font("Arial", 30, FontStyle.Bold), Brushes.LimeGreen, 70, 220);
+
+                if (_model.CurrentLevel == 1)
+                {
+                    g.DrawString("Первый уровень пройден", new Font("Arial", 20, FontStyle.Bold), Brushes.Yellow, 120, 275);
+                    g.DrawString("Click anywhere to start Next Level", new Font("Arial", 16, FontStyle.Regular), Brushes.White, 110, 325);
+                }
+                else if (_model.CurrentLevel == 2)
+                {
+                    g.DrawString("Второй уровень пройден", new Font("Arial", 20, FontStyle.Bold), Brushes.Yellow, 120, 275);
+                    g.DrawString("Click anywhere to start Next Level", new Font("Arial", 16, FontStyle.Regular), Brushes.White, 110, 325);
+                }
+                else if (_model.CurrentLevel == 3)
+                {
+                    g.DrawString("Третий уровень пройден!", new Font("Arial", 20, FontStyle.Bold), Brushes.Yellow, 110, 275);
+                    g.DrawString("YOU WIN THE GAME!", new Font("Arial", 16, FontStyle.Bold), Brushes.Cyan, 175, 325);
+                }
+            }
+
+            if (_model.IsGameOver)
+            {
+                g.FillRectangle(new SolidBrush(Color.FromArgb(200, 0, 0, 0)), 0, 250, 600, 100);
+                g.DrawString("CRASH! GAME OVER", new Font("Arial", 35, FontStyle.Bold), Brushes.Red, 40, 275);
+            }
+        }
     }
 }
