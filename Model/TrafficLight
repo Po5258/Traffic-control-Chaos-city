@@ -1,0 +1,45 @@
+using System;
+
+namespace TrafficControlGame.Models
+{
+    public class TrafficLight
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public bool IsGreen { get; set; }
+        public Direction DirectionControlled { get; set; }
+
+        public TrafficLight(float x, float y, bool isGreen, Direction dir)
+        {
+            X = x;
+            Y = y;
+            IsGreen = isGreen;
+            DirectionControlled = dir;
+        }
+
+        public void Toggle()
+        {
+            IsGreen = !IsGreen;
+        }
+
+        public bool IsInStopZone(Car car)
+        {
+            if (car.Aggression >= 100f) return false;
+
+            if (car.Type == CarType.Ambulance || car.Type == CarType.Police) return false;
+
+            if (IsGreen || car.MoveDirection != DirectionControlled) return false;
+
+            float dx = car.X - X;
+            float dy = car.Y - Y;
+
+            if (car.MoveDirection == Direction.Right && dx < 0 && dx > -45 && Math.Abs(dy) < 30) return true;
+            if (car.MoveDirection == Direction.Left && dx > 0 && dx < 45 && Math.Abs(dy) < 30) return true;
+            if (car.MoveDirection == Direction.Down && dy < 0 && dy > -45 && Math.Abs(dx) < 30) return true;
+            if (car.MoveDirection == Direction.Up && dy > 0 && dy < 45 && Math.Abs(dx) < 30) return true;
+
+            return false;
+        }
+    }
+}
+
