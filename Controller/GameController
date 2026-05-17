@@ -1,18 +1,24 @@
-using TrafficControlChaosCity.Model;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using TrafficControlGame.Models;
 
-namespace TrafficControlChaosCity.Controller;
-
-public sealed class GameController
+namespace TrafficControlGame.Controllers
 {
-    private readonly RoadMap _roadMap;
-
-    public GameController(RoadMap roadMap)
+    public class GameController
     {
-        _roadMap = roadMap ?? throw new ArgumentNullException(nameof(roadMap));
-    }
+        private GameModel _model;
 
-    public void CreateInitialScene()
-    {
-        _roadMap.LoadDefaultLayout();
+        public GameController(GameModel model)
+        {
+            _model = model;
+        }
+
+        public void ProcessClick(float x, float y)
+        {
+            _model.HandleClick(x, y);
+        }
     }
 }
