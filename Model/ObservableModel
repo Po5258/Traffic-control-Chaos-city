@@ -1,9 +1,0 @@
-public abstract class ObservableModel
-{
-    public event EventHandler? Changed;
-
-    protected void NotifyChanged()
-    {
-        Changed?.Invoke(this, EventArgs.Empty);
-    }
-}
