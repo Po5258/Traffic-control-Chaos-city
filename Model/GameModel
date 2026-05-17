@@ -1,16 +1,202 @@
 using System;
+using System.Collections.Generic;
 
 namespace TrafficControlGame.Models
 {
-    public enum Direction { Up, Down, Left, Right }
-
-    public enum CarType
+    public class GameModel
     {
-        Normal_Yellow,
-        Normal_White,
-        Normal_Red,
-        Normal_Black,
-        Ambulance,
-        Police
+        public List<Car> Cars { get; private set; }
+        public List<TrafficLight> Lights { get; private set; }
+        public bool IsGameOver { get; private set; }
+        public bool IsLevelCompleted { get; private set; }
+        public float SurvivalTime { get; private set; }
+        public int CurrentLevel { get; private set; }
+        private Random _rnd = new Random();
+
+        public GameModel()
+        {
+            Cars = new List<Car>();
+            Lights = new List<TrafficLight>();
+            InitLevel(1); 
+        }
+
+        public void InitLevel(int level)
+        {
+            CurrentLevel = level;
+            SurvivalTime = 0f;
+            IsLevelCompleted = false;
+            IsGameOver = false;
+            Cars.Clear();
+            Lights.Clear();
+
+            if (level <= 2)
+            {
+                Lights.Add(new TrafficLight(230, 330, true, Direction.Right));
+                Lights.Add(new TrafficLight(370, 270, true, Direction.Left));
+                Lights.Add(new TrafficLight(270, 230, false, Direction.Down));
+                Lights.Add(new TrafficLight(330, 370, false, Direction.Up));
+            }
+            else if (level == 3)
+            {
+                Lights.Add(new TrafficLight(230, 330, true, Direction.Right));
+                Lights.Add(new TrafficLight(370, 270, true, Direction.Left));
+                Lights.Add(new TrafficLight(270, 230, false, Direction.Down));
+                Lights.Add(new TrafficLight(330, 370, false, Direction.Up));
+
+                Lights.Add(new TrafficLight(450, 330, true, Direction.Right)); 
+                Lights.Add(new TrafficLight(590, 270, true, Direction.Left));  
+                Lights.Add(new TrafficLight(490, 230, false, Direction.Down)); 
+                Lights.Add(new TrafficLight(550, 370, false, Direction.Up));   
+            }
+        }
+
+        public void Update()
+        {
+            if (IsGameOver || IsLevelCompleted) return;
+
+            SurvivalTime += 0.03f;
+
+            if (CurrentLevel == 1 && SurvivalTime >= 15f) { IsLevelCompleted = true; return; }
+            if (CurrentLevel == 2 && SurvivalTime >= 30f) { IsLevelCompleted = true; return; }
+            if (CurrentLevel == 3 && SurvivalTime >= 45f) { IsLevelCompleted = true; return; }
+
+            SpawnCarsRandomly();
+
+            var carsToProcess = new List<Car>(Cars);
+            foreach (var car in carsToProcess)
+            {
+                bool shouldStop = false;
+
+                foreach (var light in Lights)
+                {
+                    if (light.IsInStopZone(car))
+                    {
+                        shouldStop = true;
+                        break;
+                    }
+                }
+
+                if (!shouldStop && IsCarInFront(car))
+                {
+                    shouldStop = true;
+                }
+
+                car.IsStopped = shouldStop;
+                car.Move();
+            }
+
+            CheckCollisions();
+            Cars.RemoveAll(c => c.X < -300 || c.X > 900 || c.Y < -300 || c.Y > 900);
+        }
+
+        public void NextLevel()
+        {
+            InitLevel(CurrentLevel + 1);
+        }
+
+        private bool IsCarInFront(Car currentCar)
+        {
+            foreach (var otherCar in Cars)
+            {
+                if (currentCar == otherCar) continue;
+
+                float distX = otherCar.X - currentCar.X;
+                float distY = otherCar.Y - currentCar.Y;
+                float stopDistance = 80f;
+
+                if (currentCar.MoveDirection == Direction.Right && distX > 0 && distX < stopDistance && Math.Abs(distY) < 10) return true;
+                if (currentCar.MoveDirection == Direction.Left && distX < 0 && distX > -stopDistance && Math.Abs(distY) < 10) return true;
+                if (currentCar.MoveDirection == Direction.Down && distY > 0 && distY < stopDistance && Math.Abs(distX) < 10) return true;
+                if (currentCar.MoveDirection == Direction.Up && distY < 0 && distY > -stopDistance && Math.Abs(distX) < 10) return true;
+            }
+            return false;
+        }
+
+        private bool IsSpawnAreaOccupied(float x, float y)
+        {
+            foreach (var car in Cars)
+            {
+                if (Math.Abs(car.X - x) < 70 && Math.Abs(car.Y - y) < 70)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void SpawnCarsRandomly()
+        {
+            int spawnChance = 3;
+            if (CurrentLevel == 2) spawnChance = 6;
+            if (CurrentLevel == 3) spawnChance = 10;
+
+            if (_rnd.Next(100) < spawnChance)
+            {
+                int maxLanes = (CurrentLevel == 3) ? 6 : 4;
+                int lane = _rnd.Next(maxLanes);
+
+                CarType type;
+
+                if (_rnd.Next(100) < 15)
+                {
+                    type = _rnd.Next(2) == 0 ? CarType.Ambulance : CarType.Police;
+                }
+                else
+                {
+                    var normalTypes = new[] { CarType.Normal_Yellow, CarType.Normal_White, CarType.Normal_Red, CarType.Normal_Black };
+                    type = normalTypes[_rnd.Next(normalTypes.Length)];
+                }
+
+                float spawnX = 0, spawnY = 0;
+                Direction dir = Direction.Right;
+
+                if (lane == 0) { spawnX = -50; spawnY = 330; dir = Direction.Right; }
+                if (lane == 1) { spawnX = 650; spawnY = 270; dir = Direction.Left; }
+                if (lane == 2) { spawnX = 270; spawnY = -50; dir = Direction.Down; }
+                if (lane == 3) { spawnX = 330; spawnY = 650; dir = Direction.Up; }
+
+                if (lane == 4) { spawnX = 490; spawnY = -50; dir = Direction.Down; }
+                if (lane == 5) { spawnX = 550; spawnY = 650; dir = Direction.Up; }
+
+                if (!IsSpawnAreaOccupied(spawnX, spawnY))
+                {
+                    Cars.Add(new Car(spawnX, spawnY, dir, type));
+                }
+            }
+        }
+
+        private void CheckCollisions()
+        {
+            for (int i = 0; i < Cars.Count; i++)
+            {
+                for (int j = i + 1; j < Cars.Count; j++)
+                {
+                    if (Math.Abs(Cars[i].X - Cars[j].X) < 25 && Math.Abs(Cars[i].Y - Cars[j].Y) < 25)
+                    {
+                        IsGameOver = true;
+                    }
+                }
+            }
+        }
+
+        public void HandleClick(float clickX, float clickY)
+        {
+            if (IsLevelCompleted)
+            {
+                if (CurrentLevel < 3)
+                {
+                    NextLevel();
+                }
+                return;
+            }
+
+            foreach (var light in Lights)
+            {
+                if (Math.Abs(light.X - clickX) < 25 && Math.Abs(light.Y - clickY) < 25)
+                {
+                    light.Toggle();
+                }
+            }
+        }
     }
 }
